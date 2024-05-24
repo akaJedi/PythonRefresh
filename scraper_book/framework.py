@@ -44,6 +44,8 @@ def followExternalOnly(startingSite, depth=0, max_depth=3):
         logging.info("No external links found, stopping recursion.")
 
 if __name__ == "__main__":
-    start_url = "http://oreilly.com"
+    protocol = input("Enter the protocol (http or https): ").strip().lower()
+    domain = input("Enter the domain (e.g., oreilly.com): ").strip()
+    start_url = f"{protocol}://{domain}"
     max_depth = int(input("Enter the maximum depth: "))
     followExternalOnly(start_url, max_depth=max_depth)
