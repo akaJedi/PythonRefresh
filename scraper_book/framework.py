@@ -39,6 +39,9 @@ def getRandomExternalLink(startingPage):
     externalLinks = getExternalLinks(bsObj, splitAddress(startingPage)[0])
     if len(externalLinks) == 0:
         internalLinks = getInternalLinks(bsObj, splitAddress(startingPage)[0])
+        if len(internalLinks) == 0:
+            print("No internal links found, stopping recursion.")
+            return startingPage  # or handle differently
         return getRandomExternalLink(urljoin(startingPage, internalLinks[random.randint(0, len(internalLinks)-1)]))
     else:
         return externalLinks[random.randint(0, len(externalLinks)-1)]
