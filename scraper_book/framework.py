@@ -7,12 +7,13 @@ from urllib.parse import urljoin
 
 pages = set()
 random.seed(datetime.datetime.now().timestamp())
+MAX_DEPTH = 10
 
 # Extract list of internal links found on the page
 def getInternalLinks(bsObj, includeUrl):
     internalLinks = []
     # Will find all links starting with "/"
-    for link in bsObj.findAll("a", href=re.compile("^(/|.*"+includeUrl+")")):
+    for link in bsObj.findAll("a", href=re.compile("^(/|.*" + includeUrl + ")")):
         if link.attrs['href'] is not None:
             if link.attrs['href'] not in internalLinks:
                 internalLinks.append(link.attrs['href'])
@@ -22,7 +23,7 @@ def getInternalLinks(bsObj, includeUrl):
 def getExternalLinks(bsObj, excludeUrl):
     externalLinks = []
     # Will find all links starting with http or www and not containing the current address
-    for link in bsObj.findAll("a", href=re.compile("^(http|www)((?!"+excludeUrl+").)*$")):
+    for link in bsObj.findAll("a", href=re.compile("^(http|www)((?!" + excludeUrl + ").)*$")):
         if link.attrs['href'] is not None:
             if link.attrs['href'] not in externalLinks:
                 externalLinks.append(link.attrs['href'])
@@ -40,15 +41,20 @@ def getRandomExternalLink(startingPage):
     if len(externalLinks) == 0:
         internalLinks = getInternalLinks(bsObj, splitAddress(startingPage)[0])
         if len(internalLinks) == 0:
-            print("No internal links found, stopping recursion.")
-            return startingPage  # or handle differently
-        return getRandomExternalLink(urljoin(startingPage, internalLinks[random.randint(0, len(internalLinks)-1)]))
+            return None
+        return getRandomExternalLink(urljoin(startingPage, internalLinks[random.randint(0, len(internalLinks) - 1)]))
     else:
-        return externalLinks[random.randint(0, len(externalLinks)-1)]
+        return externalLinks[random.randint(0, len(externalLinks) - 1)]
 
-def followExternalOnly(startingSite):
+def followExternalOnly(startingSite, depth=0):
+    if depth > MAX_DEPTH:
+        print("Reached maximum recursion depth.")
+        return
     externalLink = getRandomExternalLink(startingSite)
+    if externalLink is None:
+        print("No external links found, stopping recursion.")
+        return
     print("Random external link is: " + externalLink)
-    followExternalOnly(externalLink)
+    followExternalOnly(externalLink, depth + 1)
 
 followExternalOnly("http://oreilly.com")
