@@ -1,60 +1,42 @@
-from urllib.request import urlopen, Request
-from bs4 import BeautifulSoup
-import re
-import datetime
 import random
-from urllib.parse import urljoin
+import time
+from urllib.request import urlopen, Request
+from urllib.parse import urlparse
+from bs4 import BeautifulSoup
+import ssl
+import urllib.error
 
-pages = set()
-random.seed(datetime.datetime.now().timestamp())
-MAX_DEPTH = 10
+# Ignore SSL certificate errors
+context = ssl._create_unverified_context()
 
-# Extract list of internal links found on the page
-def getInternalLinks(bsObj, includeUrl):
-    internalLinks = []
-    # Will find all links starting with "/"
-    for link in bsObj.findAll("a", href=re.compile("^(/|.*" + includeUrl + ")")):
-        if link.attrs['href'] is not None:
-            if link.attrs['href'] not in internalLinks:
-                internalLinks.append(link.attrs['href'])
-    return internalLinks
-
-# Extracting list of all external links found on the page
-def getExternalLinks(bsObj, excludeUrl):
-    externalLinks = []
-    # Will find all links starting with http or www and not containing the current address
-    for link in bsObj.findAll("a", href=re.compile("^(http|www)((?!" + excludeUrl + ").)*$")):
-        if link.attrs['href'] is not None:
-            if link.attrs['href'] not in externalLinks:
-                externalLinks.append(link.attrs['href'])
-    return externalLinks
-
-def splitAddress(address):
-    addressParts = address.replace("http://", "").replace("https://", "").split("/")
-    return addressParts
-
-def getRandomExternalLink(startingPage):
-    req = Request(startingPage, headers={'User-Agent': 'Mozilla/5.0'})
-    html = urlopen(req)
-    bsObj = BeautifulSoup(html, 'html.parser')
-    externalLinks = getExternalLinks(bsObj, splitAddress(startingPage)[0])
-    if len(externalLinks) == 0:
-        internalLinks = getInternalLinks(bsObj, splitAddress(startingPage)[0])
-        if len(internalLinks) == 0:
+def getRandomExternalLink(startingSite):
+    try:
+        req = Request(startingSite, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urlopen(req, context=context).read()
+        soup = BeautifulSoup(html, "html.parser")
+        externalLinks = [a.attrs['href'] for a in soup.findAll('a', href=True) if 'http' in a.attrs['href'] and urlparse(a.attrs['href']).netloc != urlparse(startingSite).netloc]
+        if len(externalLinks) == 0:
             return None
-        return getRandomExternalLink(urljoin(startingPage, internalLinks[random.randint(0, len(internalLinks) - 1)]))
-    else:
-        return externalLinks[random.randint(0, len(externalLinks) - 1)]
+        return random.choice(externalLinks)
+    except urllib.error.HTTPError as e:
+        print(f"HTTPError: {e.code} {e.reason}")
+        if e.code == 429:
+            print("Rate limit exceeded. Sleeping for 60 seconds.")
+            time.sleep(60)
+        return None
+    except Exception as e:
+        print(f"Exception: {e}")
+        return None
 
-def followExternalOnly(startingSite, depth=0):
-    if depth > MAX_DEPTH:
-        print("Reached maximum recursion depth.")
+def followExternalOnly(startingSite, depth=0, max_depth=3):
+    if depth >= max_depth:
+        print("Reached maximum depth, stopping recursion.")
         return
+    print(f"Random external link is: {startingSite}")
     externalLink = getRandomExternalLink(startingSite)
-    if externalLink is None:
+    if externalLink:
+        followExternalOnly(externalLink, depth + 1)
+    else:
         print("No external links found, stopping recursion.")
-        return
-    print("Random external link is: " + externalLink)
-    followExternalOnly(externalLink, depth + 1)
 
 followExternalOnly("http://oreilly.com")
