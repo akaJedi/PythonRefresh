@@ -1,51 +1,40 @@
 import random
 import time
-import logging
 from urllib.request import urlopen, Request
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import ssl
-import urllib.error
-
-# Configure logging
-logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Ignore SSL certificate errors
 context = ssl._create_unverified_context()
 
-def getRandomExternalLink(startingSite):
+def get_random_external_link(starting_site):
     try:
-        req = Request(startingSite, headers={'User-Agent': 'Mozilla/5.0'})
+        req = Request(starting_site, headers={'User-Agent': 'Mozilla/5.0'})
         html = urlopen(req, context=context).read()
         soup = BeautifulSoup(html, "html.parser")
-        externalLinks = [a.attrs['href'] for a in soup.findAll('a', href=True) if 'http' in a.attrs['href'] and urlparse(a.attrs['href']).netloc != urlparse(startingSite).netloc]
-        if len(externalLinks) == 0:
-            return None
-        return random.choice(externalLinks)
-    except urllib.error.HTTPError as e:
-        logging.error(f"HTTPError: {e.code} {e.reason}")
-        if e.code == 429:
-            logging.warning("Rate limit exceeded. Sleeping for 60 seconds.")
-            time.sleep(60)
-        return None
-    except Exception as e:
-        logging.error(f"Exception: {e}")
+        external_links = [a.attrs['href'] for a in soup.find_all('a', href=True) 
+                          if 'http' in a.attrs['href'] and urlparse(a.attrs['href']).netloc != urlparse(starting_site).netloc]
+        return random.choice(external_links) if external_links else None
+    except:
         return None
 
-def followExternalOnly(startingSite, depth=0, max_depth=3):
+def follow_external_only(starting_site, depth=0, max_depth=3, output_to_screen=False):
     if depth >= max_depth:
-        logging.info("Reached maximum depth, stopping recursion.")
         return
-    logging.info(f"Random external link is: {startingSite}")
-    externalLink = getRandomExternalLink(startingSite)
-    if externalLink:
-        followExternalOnly(externalLink, depth + 1, max_depth)
-    else:
-        logging.info("No external links found, stopping recursion.")
+    message = f"Random external link is: {starting_site}"
+    if output_to_screen:
+        print(message)
+    with open("log.txt", "a") as log_file:
+        log_file.write(message + "\n")
+    external_link = get_random_external_link(starting_site)
+    if external_link:
+        follow_external_only(external_link, depth + 1, max_depth, output_to_screen)
 
 if __name__ == "__main__":
     protocol = input("Enter the protocol (http or https): ").strip().lower()
     domain = input("Enter the domain (e.g., oreilly.com): ").strip()
     start_url = f"{protocol}://{domain}"
     max_depth = int(input("Enter the maximum depth: "))
-    followExternalOnly(start_url, max_depth=max_depth)
+    output_option = input("Output to screen as well? (y/n, default is n): ").strip().lower() == 'y'
+    follow_external_only(start_url, max_depth=max_depth, output_to_screen=output_option)
