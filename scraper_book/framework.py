@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import datetime
 import random
+from urllib.parse import urljoin
 
 pages = set()
 random.seed(datetime.datetime.now().timestamp())
@@ -38,7 +39,7 @@ def getRandomExternalLink(startingPage):
     externalLinks = getExternalLinks(bsObj, splitAddress(startingPage)[0])
     if len(externalLinks) == 0:
         internalLinks = getInternalLinks(bsObj, splitAddress(startingPage)[0])
-        return getRandomExternalLink(internalLinks[random.randint(0, len(internalLinks)-1)])
+        return getRandomExternalLink(urljoin(startingPage, internalLinks[random.randint(0, len(internalLinks)-1)]))
     else:
         return externalLinks[random.randint(0, len(externalLinks)-1)]
 
