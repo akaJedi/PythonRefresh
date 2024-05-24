@@ -1,4 +1,4 @@
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from bs4 import BeautifulSoup
 import re
 import datetime
@@ -28,11 +28,12 @@ def getExternalLinks(bsObj, excludeUrl):
     return externalLinks
 
 def splitAddress(address):
-    addressParts = address.replace("http://", "").split("/")
+    addressParts = address.replace("http://", "").replace("https://", "").split("/")
     return addressParts
 
 def getRandomExternalLink(startingPage):
-    html = urlopen(startingPage)
+    req = Request(startingPage, headers={'User-Agent': 'Mozilla/5.0'})
+    html = urlopen(req)
     bsObj = BeautifulSoup(html, 'html.parser')
     externalLinks = getExternalLinks(bsObj, splitAddress(startingPage)[0])
     if len(externalLinks) == 0:
